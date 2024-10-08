@@ -1,0 +1,114 @@
+const sequelize = require('../helpers/connection');
+const businessInfo = require('../models/businessInfo');
+const BusinessInfo = require('../models/businessInfo')
+const Owner = require('../models/owner')
+const businessServices = require('../services/businessServices')
+var otpMessage = {};
+const OTP_EXPIRATION_TIME = 10 * 60 * 1000;
+
+exports.registerBusiness = async (req, res) => {
+    console.log("hello welcome to register your business");
+    const { owner, businessInfo } = req.body;
+
+    try{
+        const result = await businessServices.registerBusiness(owner,businessInfo)
+        return res.status(201).json(result)
+    }
+    catch(error){
+        return res.status(404).json({error:error.message})
+    } 
+};
+
+exports.sendOtp = async (req, res) => {
+    try {
+      const { emailId } = req.body;
+  
+      let OTP = Math.floor(200000 + Math.random() * 50000).toString();
+      let ExpirationTime = Date.now() + OTP_EXPIRATION_TIME;
+  
+      otpMessage[emailId] = { OTP, ExpirationTime };
+      console.log(otpMessage[emailId]);
+  
+      let message = "OTP sent successfully!";
+      let status = 200;
+  
+      return res.status(200).json({message:message});
+    } catch (error) {
+       return res.status(500).json({error:"Internal server error"});
+    }
+  };
+
+  exports.verifyOtp = async (req, res) => {
+    try {
+      const { emailId, otp } = req.body;
+  
+      // console.log(otpStore);
+      const userotpData = otpMessage[emailId];
+  
+      if (!userotpData) {
+        return res
+          .status(400)
+          .json({ message: "No OTP was sent to this mailId." });
+      }
+      const { OTP, ExpirationTime } = userotpData;
+  
+      if (Date.now() > ExpirationTime) {
+        return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+      }
+  
+      if (OTP == otp) {
+         res.json({ message: 'OTP verified successfully!' });
+      } else {
+        res.status(400).json({ message: 'Invalid OTP. Please try again.' });
+      }
+    } catch (error) {
+        return res.status(500).json({error:"Internal server error"})
+    }
+  };
+
+exports.getBusinessDetails  = async(req,res)=>{
+    const {id} = req.params;
+    try{
+        const result = await businessServices.getBusinessById(id);
+        if(!result){
+            return res.status(404).json({error:"Business not found"});
+        }
+        return res.status(200).json(result)
+    }
+    catch(error){
+        return res.status(500).json({error:error.message})
+    }
+}
+
+exports.updateBusiness = async (req, res) => {
+    const { id } = req.params;  
+    const { owner, businessInfo } = req.body;
+
+    try{
+        const result = await businessServices.updateBusiness(id,owner,businessInfo);
+        if(!result){
+            return res.status(404).json({error:'Business not found'})
+        }
+
+        return res.status(200).json({message:result})
+    }
+    catch(error){
+        return res.status(500).json({error:error.message})
+    }
+};
+
+exports.getOwnerById = async (req, res) => {
+    const { id } = req.params;
+    // console.log("Hello Mr.Owner")
+    try{
+        const result = await businessServices.getOwnerById(id);
+        if(!result){
+            return res.status(404).json({ message: 'Owner not found' })
+        }
+        return res.status(200).json({Owner:result})
+    }
+    catch(error){
+        return res.status(500).json({error:error.message})
+    }
+};
+
